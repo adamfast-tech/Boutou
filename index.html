@@ -107,6 +107,7 @@ section{display:none}section.on{display:block;animation:in .25s}
   <div class="card" id="stepsCard" style="display:none">
     <h2 id="stepsTitle"></h2>
     <div id="steps"></div>
+    <div class="row" style="margin-top:8px"><input id="stepIn" placeholder="Ajouter une miette…" style="flex:3"><button class="btn alt" style="flex:1;margin:0" onclick="addStep()">+</button></div>
     <div class="row">
       <button class="btn" onclick="startFirst()">Je m'y mets · 2 min</button>
     </div>
@@ -213,7 +214,7 @@ const steps=own.length?own.map(t=>({t,m:2})):localCut(task);
 S.set('cur',{title:task,steps:steps.map(s=>({t:s.t,m:s.m||2,done:false}))});$('stepsIn').value='';renderSteps()}
 function localCut(task){return[{t:'Ouvre ce dont tu as besoin pour : '+task,m:2},{t:'Écris en une phrase ce que « fini » veut dire',m:2},{t:'Fais la toute première action visible, même imparfaite',m:2},{t:'Continue 2 minutes de plus, sans juger',m:2},{t:'Note où tu t\'arrêtes pour reprendre facilement',m:2}]}
 function renderSteps(){const c=S.get('cur',null);if(!c)return;$('stepsCard').style.display='block';$('stepsTitle').textContent=c.title;
-$('steps').innerHTML=c.steps.map((s,i)=>`<label class="step ${s.done?'done':''}"><input type="checkbox" ${s.done?'checked':''} onchange="tick(${i})"><span>${esc(s.t)}</span><span class="min">${s.m} min</span></label>`).join('')}
+$('steps').innerHTML=c.steps.map((s,i)=>`<label class="step ${s.done?'done':''}"><input type="checkbox" ${s.done?'checked':''} onchange="tick(${i})"><span>${esc(s.t)}</span><span class="min">${s.m} min</span><button class="x" onclick="event.preventDefault();delStep(${i})">×</button></label>`).join('')}
 function tick(i){const c=S.get('cur');c.steps[i].done=!c.steps[i].done;S.set('cur',c);if(c.steps[i].done){win(c.steps[i].t);toast('Bien joué ✨')}
 if(c.steps.every(s=>s.done)){win('Tâche finie : '+c.title);toast('Tâche terminée 🎉')}renderSteps()}
 function startFirst(){setSprint(2);go('sprint');toggleSprint()}
