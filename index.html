@@ -4,265 +4,144 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Boutou">
-<meta name="theme-color" content="#f6f1e9">
+<meta name="theme-color" content="#EEF2EA" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1613" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Boutou, ton compagnon TDAH : découper les tâches, démarrer en 2 minutes, respirer, apprendre comment marche ton cerveau.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="preload" href="fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/atkinson-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="css/mascot.css">
+<link rel="stylesheet" href="css/app.css">
 <title>Boutou</title>
-<style>
-:root{--bg:#f6f1e9;--card:#fff;--ink:#1f1b16;--mute:#7a7268;--acc:#2f9e8f;--acc2:#e9f5f2;--warn:#e07a3f;--r:20px}
-@media (prefers-color-scheme:dark){:root{--bg:#15130f;--card:#221f1a;--ink:#f3ede4;--mute:#a59d92;--acc:#4cc2b1;--acc2:#1d322e}}
-*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--ink);font:16px/1.45 -apple-system,system-ui,sans-serif;padding:env(safe-area-inset-top) 16px calc(90px + env(safe-area-inset-bottom))}
-h1{font-size:28px;margin:18px 0 2px}h2{font-size:18px;margin:0 0 8px}
-.sub{color:var(--mute);font-size:14px}
-.card{background:var(--card);border-radius:var(--r);padding:16px;margin:14px 0;box-shadow:0 2px 10px #0000000d}
-.tag{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--acc);font-weight:700;margin-bottom:4px}
-.btn{display:block;width:100%;border:0;border-radius:14px;padding:14px;font:600 16px inherit;font-family:inherit;background:var(--ink);color:var(--bg);margin-top:10px;cursor:pointer}
-.btn.alt{background:var(--acc2);color:var(--ink)}
-.row{display:flex;gap:8px;flex-wrap:wrap}.row .btn{flex:1}
-textarea,input{width:100%;border:1px solid #0002;border-radius:12px;padding:12px;font:inherit;background:var(--bg);color:var(--ink)}
-textarea{min-height:80px;resize:vertical}
-.step{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid #0001}
-.step input{width:22px;height:22px;flex:none;margin-top:2px;accent-color:var(--acc)}
-.step.done span{text-decoration:line-through;color:var(--mute)}
-.min{margin-left:auto;font-size:12px;color:var(--mute);flex:none}
-.moods{display:flex;justify-content:space-between;font-size:30px;margin:8px 0}
-.moods button{background:none;border:0;font-size:32px;padding:4px;border-radius:12px;cursor:pointer}
-.moods button.on{background:var(--acc2)}
-nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:var(--card);padding:8px 4px calc(8px + env(safe-area-inset-bottom));box-shadow:0 -2px 12px #0000001a}
-nav button{flex:1;background:none;border:0;color:var(--mute);font:600 11px inherit;font-family:inherit;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
-nav button.on{color:var(--acc)}nav b{font-size:22px}
-section{display:none}section.on{display:block;animation:in .25s}
-@keyframes in{from{opacity:0;transform:translateY(6px)}}
-.mascot{width:90px;height:90px;display:block;margin:0 auto}
-.bounce{animation:b 2.4s ease-in-out infinite}@keyframes b{50%{transform:translateY(-6px)}}
-.timer{font:700 56px ui-monospace,monospace;text-align:center;margin:10px 0}
-.breath{position:fixed;inset:0;background:linear-gradient(#3aa797,#2a6f7f);display:none;flex-direction:column;align-items:center;justify-content:center;color:#fff;z-index:9}
-.breath.on{display:flex}
-.orb{width:180px;height:180px;border-radius:50%;background:#ffffff33;display:flex;align-items:center;justify-content:center;transition:transform 4s ease-in-out}
-.breath p{font:700 24px inherit;margin-top:30px}
-.close{position:absolute;top:calc(14px + env(safe-area-inset-top));right:18px;background:none;border:0;color:#fff;font-size:16px}
-.note{padding:8px 0;border-bottom:1px solid #0001;display:flex;gap:8px}.note small{color:var(--mute);margin-left:auto;flex:none}
-.x{background:none;border:0;color:var(--mute);font-size:18px}
-.lesson{padding:12px 0;border-bottom:1px solid #0001;cursor:pointer}
-.lesson.done::before{content:"✓ ";color:var(--acc);font-weight:700}
-.toast{position:fixed;left:50%;top:calc(20px + env(safe-area-inset-top));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;opacity:0;transition:.3s;z-index:10}
-.toast.on{opacity:1}
-</style>
+<script>try{var t=localStorage.getItem('bt_theme');t=t&&JSON.parse(t);if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 
-<svg width="0" height="0" style="position:absolute"><defs>
-<symbol id="boutou" viewBox="0 0 100 100">
-<path d="M50 12c4-6 10-6 12-2-5 1-8 4-9 8" fill="#3b8f5a"/>
-<ellipse cx="50" cy="58" rx="36" ry="34" fill="#f2c14e"/>
-<ellipse cx="50" cy="70" rx="20" ry="14" fill="#fbe3a1"/>
-<circle cx="38" cy="52" r="5" fill="#1f1b16"/><circle cx="62" cy="52" r="5" fill="#1f1b16"/>
-<circle cx="39.5" cy="50.5" r="1.6" fill="#fff"/><circle cx="63.5" cy="50.5" r="1.6" fill="#fff"/>
-<path d="M44 62q6 5 12 0" stroke="#1f1b16" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-<circle cx="30" cy="61" r="4" fill="#ef8f6a" opacity=".6"/><circle cx="70" cy="61" r="4" fill="#ef8f6a" opacity=".6"/>
-</symbol></defs></svg>
+<main id="app">
+  <!-- ACCUEIL -->
+  <section class="view on" id="v-home" aria-label="Accueil">
+    <header class="top">
+      <div>
+        <h1 id="hello">Salut</h1>
+        <p class="date" id="today"></p>
+      </div>
+    </header>
 
-<!-- ACCUEIL -->
-<section id="home" class="on">
-  <h1 id="hello">Salut</h1>
-  <div class="sub" id="today"></div>
-  <div class="sub" style="color:var(--acc);font-weight:600" id="streak"></div>
-  <div class="card">
-    <div class="tag">Météo du jour</div>
-    <h2>Tu te sens comment ?</h2>
-    <div class="moods" id="moods"></div>
-    <div class="sub" id="moodMsg">30 secondes pour caler ta journée.</div>
-  </div>
-  <div class="card" id="nowCard">
-    <div class="tag">Maintenant</div>
-    <div id="nowTxt" class="sub">Rien en cours. Découpe une tâche pour commencer.</div>
-    <button class="btn" onclick="go('cut')">Découper une tâche</button>
-  </div>
-  <div class="card">
-    <div class="tag">Leçon du jour</div>
-    <h2 id="lessonTitle"></h2>
-    <button class="btn alt" onclick="go('learn')">Lire · 3 min</button>
-  </div>
-  <div class="row">
-    <button class="btn alt" onclick="breathe()">🌬️ Respirer</button>
-    <button class="btn alt" onclick="go('sprint')">⏱️ Sprint</button>
-  </div>
-</section>
-
-<!-- DÉCOUPEUR -->
-<section id="cut">
-  <h1>Découpeur</h1>
-  <div class="sub">Écris ou dicte la tâche qui bloque. Note tes étapes (une par ligne), ou laisse vide pour un découpage type.</div>
-  <div class="card">
-    <textarea id="task" placeholder="Ex : faire ma déclaration d'impôts"></textarea>
-    <textarea id="stepsIn" style="margin-top:8px" placeholder="Étapes (optionnel), une par ligne"></textarea>
-    <div class="row">
-      <button class="btn alt" onclick="dictate('task')">🎙️ Dicter</button>
-      <button class="btn" id="cutBtn" onclick="cut()">Découper</button>
+    <div class="garden" id="garden">
+      <div class="garden-sky" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="bubble" id="bubble" aria-live="polite"></p>
+      <button class="garden-pet" id="homePet" aria-label="Caresser Boutou"></button>
+      <div class="garden-ground" aria-hidden="true"></div>
+      <div class="garden-foot">
+        <div class="elan" id="elan"></div>
+        <button class="level" id="levelBtn"></button>
+      </div>
     </div>
-  </div>
-  <div class="card" id="stepsCard" style="display:none">
-    <h2 id="stepsTitle"></h2>
-    <div id="steps"></div>
-    <div class="row" style="margin-top:8px"><input id="stepIn" placeholder="Ajouter une miette…" style="flex:3"><button class="btn alt" style="flex:1;margin:0" onclick="addStep()">+</button></div>
-    <div class="row">
-      <button class="btn" onclick="startFirst()">Je m'y mets · 2 min</button>
+
+    <div class="card mood-card">
+      <h2>Tu te sens comment ?</h2>
+      <div class="moods" id="moods" role="radiogroup" aria-label="Ta météo du jour"></div>
+      <div class="mood-out" id="moodOut" hidden></div>
     </div>
-  </div>
-</section>
 
-<!-- SPRINT -->
-<section id="sprint">
-  <h1>Sprint</h1>
-  <div class="sub">Juste commencer. Tu as le droit d'arrêter après.</div>
-  <div class="card">
-    <svg class="mascot bounce"><use href="#boutou"/></svg>
-    <div class="timer" id="clock">02:00</div>
-    <div class="row">
-      <button class="btn alt" onclick="setSprint(2)">2 min</button>
-      <button class="btn alt" onclick="setSprint(10)">10 min</button>
+    <div class="card now-card" id="nowCard"></div>
+
+    <button class="card lesson-card" id="lessonCard"></button>
+
+    <div class="tools">
+      <button class="tool" data-go="breathe"><span class="ic" data-i="wind"></span>Respirer</button>
+      <button class="tool" data-go="sprint"><span class="ic" data-i="timer"></span>Sprint</button>
+      <button class="tool sos" data-go="sos"><span class="ic" data-i="wave"></span>Ça déborde</button>
     </div>
-    <button class="btn" id="sprintBtn" onclick="toggleSprint()">Démarrer</button>
-  </div>
-</section>
+  </section>
 
-<!-- MÉMOIRE -->
-<section id="mem">
-  <h1>Mémoire externe</h1>
-  <div class="sub">Vide ta tête. Boutou retient.</div>
-  <div class="card">
-    <textarea id="memIn" placeholder="Une idée, un truc à pas oublier…"></textarea>
-    <div class="row">
-      <button class="btn alt" onclick="dictate('memIn')">🎙️ Dicter</button>
-      <button class="btn" onclick="addNote()">Ranger</button>
+  <!-- DÉCOUPER -->
+  <section class="view" id="v-cut" aria-label="Découper">
+    <div id="cutList">
+      <header class="top"><div><h1>Découper</h1><p class="date">Écris ce qui bloque. Boutou le coupe en miettes.</p></div></header>
+      <div class="card">
+        <label class="sr" for="taskIn">Tâche à découper</label>
+        <textarea id="taskIn" rows="2" placeholder="Ex : répondre au mail du propriétaire"></textarea>
+        <div class="row">
+          <button class="btn soft icon-only" data-mic="taskIn" aria-label="Dicter la tâche"><span class="ic" data-i="mic"></span></button>
+          <button class="btn primary grow" id="cutBtn"><span class="ic" data-i="cut"></span>Découper</button>
+        </div>
+      </div>
+      <div id="taskLists"></div>
     </div>
-  </div>
-  <div class="card"><div id="notes"></div></div>
-  <div class="card">
-    <div class="tag">Victoires</div>
-    <div id="wins" class="sub"></div>
-  </div>
-</section>
+    <div id="taskView" hidden></div>
+  </section>
 
-<!-- LEÇONS -->
-<section id="learn">
-  <h1>Le voyage</h1>
-  <div class="sub">Une leçon par jour, à ton rythme.</div>
-  <div class="card" id="lessonList"></div>
-  <div class="card" id="lessonView" style="display:none"></div>
-</section>
+  <!-- VOYAGE -->
+  <section class="view" id="v-learn" aria-label="Le voyage">
+    <header class="top"><div><h1>Le voyage</h1><p class="date">Une leçon courte par jour, à ton rythme.</p></div></header>
+    <div class="journey-progress" id="journeyProg"></div>
+    <div id="journey"></div>
+  </section>
 
-<!-- RÉGLAGES -->
-<section id="set">
-  <h1>Réglages</h1>
-  <div class="card">
-    <h2>Prénom</h2>
-    <input id="nameIn" placeholder="Ton prénom">
-  </div>
-  <button class="btn" onclick="saveSet()">Enregistrer</button>
-  <button class="btn alt" onclick="wipe()">Tout effacer</button>
-</section>
+  <!-- MÉMOIRE -->
+  <section class="view" id="v-mem" aria-label="Mémoire">
+    <header class="top"><div><h1>Mémoire</h1><p class="date">Vide ta tête ici. Boutou retient pour toi.</p></div></header>
+    <div class="card">
+      <label class="sr" for="memIn">Note</label>
+      <textarea id="memIn" rows="2" placeholder="Une idée, un truc à ne pas oublier…"></textarea>
+      <div class="row">
+        <button class="btn soft icon-only" data-mic="memIn" aria-label="Dicter la note"><span class="ic" data-i="mic"></span></button>
+        <button class="btn primary grow" id="memBtn"><span class="ic" data-i="box"></span>Ranger</button>
+      </div>
+    </div>
+    <input class="search" id="memSearch" type="search" placeholder="Chercher dans la mémoire" hidden>
+    <div id="notes"></div>
+  </section>
 
-<div class="breath" id="breath">
-  <button class="close" onclick="stopBreath()">Fermer</button>
-  <div class="orb" id="orb"><svg class="mascot"><use href="#boutou"/></svg></div>
-  <p id="breathTxt">Inspire…</p>
-</div>
-<div class="toast" id="toast"></div>
+  <!-- MOI -->
+  <section class="view" id="v-me" aria-label="Mon jardin">
+    <header class="top"><div><h1>Ton jardin</h1><p class="date" id="meSub"></p></div></header>
+    <div class="me-hero card" id="meHero"></div>
+    <div class="stats" id="stats"></div>
+    <div class="card"><h2>Ta semaine</h2><div class="week" id="week"></div></div>
+    <div class="card"><h2>Victoires</h2><div id="wins"></div></div>
+    <div class="card install" id="installCard" hidden></div>
+    <div class="card settings">
+      <h2>Réglages</h2>
+      <label class="field"><span>Prénom</span><input id="nameIn" autocomplete="given-name" placeholder="Ton prénom"></label>
+      <div class="field"><span>Thème</span>
+        <div class="seg" id="themeSeg" role="radiogroup" aria-label="Thème">
+          <button data-v="auto">Auto</button><button data-v="light">Clair</button><button data-v="dark">Sombre</button>
+        </div>
+      </div>
+      <label class="field switch"><span>Sons</span><input type="checkbox" id="soundIn"><i aria-hidden="true"></i></label>
+      <div class="set-actions">
+        <button class="btn soft" id="introBtn">Revoir l'intro</button>
+        <button class="btn soft" id="exportBtn">Exporter mes données</button>
+        <label class="btn soft">Importer<input type="file" id="importIn" accept="application/json,.json" hidden></label>
+        <button class="btn danger" id="wipeBtn">Tout effacer</button>
+      </div>
+      <p class="fine">Tes données restent sur cet appareil. Boutou aide à s'organiser, il ne remplace pas un avis médical.</p>
+    </div>
+  </section>
+</main>
 
-<nav>
-  <button class="on" data-t="home" onclick="go('home')"><b>🏠</b>Accueil</button>
-  <button data-t="cut" onclick="go('cut')"><b>✂️</b>Découper</button>
-  <button data-t="mem" onclick="go('mem')"><b>🧠</b>Mémoire</button>
-  <button data-t="learn" onclick="go('learn')"><b>🧭</b>Voyage</button>
-  <button data-t="set" onclick="go('set')"><b>⚙️</b>Réglages</button>
+<nav class="tabs" id="tabs" aria-label="Navigation">
+  <button data-t="home" class="on"><span class="ic" data-i="home"></span>Accueil</button>
+  <button data-t="cut"><span class="ic" data-i="cut"></span>Découper</button>
+  <button data-t="learn"><span class="ic" data-i="path"></span>Voyage</button>
+  <button data-t="mem"><span class="ic" data-i="box"></span>Mémoire</button>
+  <button data-t="me"><span class="ic" data-i="sprout"></span>Jardin</button>
 </nav>
 
-<script>
-const $=id=>document.getElementById(id);
-const S={get(k,d){try{const v=localStorage.getItem('bt_'+k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem('bt_'+k,JSON.stringify(v))}catch(e){}}};
-const todayKey=()=>new Date().toISOString().slice(0,10);
-function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),1800)}
-function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+<!-- Calques plein écran -->
+<div class="layer" id="layer" role="dialog" aria-modal="true" hidden></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
 
-function go(t){document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id===t));
-document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));scrollTo(0,0);if(t==='mem')renderMem();if(t==='learn')renderLessons()}
-
-/* Élan (série) */
-function touch(){const d=todayKey(),last=S.get('last',null);let n=S.get('streak',0);
-if(last!==d){const y=new Date(Date.now()-864e5).toISOString().slice(0,10);n=last===y?n+1:1;S.set('streak',n);S.set('last',d)}
-$('streak').textContent='🔥 Élan · '+n}
-function win(t){const w=S.get('wins',[]);w.unshift({t,d:todayKey()});S.set('wins',w.slice(0,200));touch()}
-
-/* Accueil */
-const MOODS=[['😩','Journée lourde. Une seule miette suffit aujourd\'hui.'],['😕','On y va doucement. Commence par 2 minutes.'],['😐','Correct. Choisis une tâche, découpe-la.'],['🙂','Bonne énergie. Profite-en pour la tâche évitée.'],['🤩','Gros élan. Attention à l\'hyperfocus : pose un minuteur.']];
-function renderHome(){const n=S.get('name','');$('hello').textContent='Salut'+(n?' '+n:'');
-$('today').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-const m=S.get('mood',{});$('moods').innerHTML=MOODS.map((x,i)=>`<button class="${m.d===todayKey()&&m.v===i?'on':''}" onclick="mood(${i})">${x[0]}</button>`).join('');
-if(m.d===todayKey())$('moodMsg').textContent=MOODS[m.v][1];
-const cur=S.get('cur',null);if(cur){const nx=cur.steps.find(s=>!s.done);$('nowTxt').innerHTML=nx?`<b>${esc(cur.title)}</b><br>${esc(nx.t)}`:'Tâche terminée 🎉'}
-const L=nextLesson();$('lessonTitle').textContent=L?L.t:'Voyage terminé 🎉';touch()}
-function mood(i){S.set('mood',{d:todayKey(),v:i});renderHome()}
-
-/* Découpeur */
-function cut(){const task=$('task').value.trim();if(!task)return toast('Écris une tâche');
-const own=$('stepsIn').value.split('\n').map(x=>x.trim()).filter(Boolean);
-const steps=own.length?own.map(t=>({t,m:2})):localCut(task);
-S.set('cur',{title:task,steps:steps.map(s=>({t:s.t,m:s.m||2,done:false}))});$('stepsIn').value='';renderSteps()}
-function localCut(task){return[{t:'Ouvre ce dont tu as besoin pour : '+task,m:2},{t:'Écris en une phrase ce que « fini » veut dire',m:2},{t:'Fais la toute première action visible, même imparfaite',m:2},{t:'Continue 2 minutes de plus, sans juger',m:2},{t:'Note où tu t\'arrêtes pour reprendre facilement',m:2}]}
-function renderSteps(){const c=S.get('cur',null);if(!c)return;$('stepsCard').style.display='block';$('stepsTitle').textContent=c.title;
-$('steps').innerHTML=c.steps.map((s,i)=>`<label class="step ${s.done?'done':''}"><input type="checkbox" ${s.done?'checked':''} onchange="tick(${i})"><span>${esc(s.t)}</span><span class="min">${s.m} min</span><button class="x" onclick="event.preventDefault();delStep(${i})">×</button></label>`).join('')}
-function tick(i){const c=S.get('cur');c.steps[i].done=!c.steps[i].done;S.set('cur',c);if(c.steps[i].done){win(c.steps[i].t);toast('Bien joué ✨')}
-if(c.steps.every(s=>s.done)){win('Tâche finie : '+c.title);toast('Tâche terminée 🎉')}renderSteps()}
-function startFirst(){setSprint(2);go('sprint');toggleSprint()}
-
-/* Sprint */
-let sLen=120,sLeft=120,sInt=null;
-function fmt(s){return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
-function setSprint(m){clearInterval(sInt);sInt=null;sLen=sLeft=m*60;$('clock').textContent=fmt(sLeft);$('sprintBtn').textContent='Démarrer'}
-function toggleSprint(){if(sInt){clearInterval(sInt);sInt=null;$('sprintBtn').textContent='Reprendre';return}
-$('sprintBtn').textContent='Pause';sInt=setInterval(()=>{sLeft--;$('clock').textContent=fmt(sLeft);if(sLeft<=0){clearInterval(sInt);sInt=null;navigator.vibrate&&navigator.vibrate([200,100,200]);win('Sprint de '+sLen/60+' min');toast('Sprint fini 🎉');setSprint(sLen/60)}},1000)}
-
-/* Respiration 4-4 */
-let bInt=null;
-function breathe(){$('breath').classList.add('on');let inh=true;const step=()=>{$('orb').style.transform=inh?'scale(1.35)':'scale(1)';$('breathTxt').textContent=inh?'Inspire…':'Expire…';navigator.vibrate&&navigator.vibrate(40);inh=!inh};step();bInt=setInterval(step,4000)}
-function stopBreath(){clearInterval(bInt);$('breath').classList.remove('on');$('orb').style.transform='scale(1)'}
-
-/* Mémoire */
-function addNote(){const v=$('memIn').value.trim();if(!v)return;const n=S.get('notes',[]);n.unshift({t:v,d:new Date().toLocaleDateString('fr-FR')});S.set('notes',n);$('memIn').value='';renderMem();toast('Rangé')}
-function delNote(i){const n=S.get('notes',[]);n.splice(i,1);S.set('notes',n);renderMem()}
-function renderMem(){const n=S.get('notes',[]);$('notes').innerHTML=n.length?n.map((x,i)=>`<div class="note"><span>${esc(x.t)}</span><small>${x.d}</small><button class="x" onclick="delNote(${i})">×</button></div>`).join(''):'<div class="sub">Rien pour l\'instant.</div>';
-const w=S.get('wins',[]);$('wins').innerHTML=w.length?`${w.length} victoires.<br>`+w.slice(0,8).map(x=>'✓ '+esc(x.t)).join('<br>'):'Tes victoires apparaîtront ici.'}
-
-/* Dictée (Safari / Chrome) */
-function dictate(id){const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R)return toast('Dictée non supportée : utilise le micro du clavier');
-const r=new R();r.lang='fr-FR';r.onresult=e=>{$(id).value+=($(id).value?' ':'')+e.results[0][0].transcript};r.onerror=()=>toast('Dictée interrompue');r.start();toast('Je t\'écoute…')}
-
-/* Leçons (contenu original) */
-const LESSONS=[
-{t:'Le temps est flou',b:'Le cerveau TDAH perçoit mal le temps qui passe : c\'est « maintenant » ou « pas maintenant ». Astuce : rends le temps visible. Un minuteur posé devant toi vaut mieux qu\'une horloge dans ta tête.'},
-{t:'Pourquoi démarrer coûte',b:'Ce n\'est pas la tâche qui est dure, c\'est l\'entrée. Plus la première action est petite, plus la barrière baisse. Astuce : la première étape doit sembler presque ridicule.'},
-{t:'L\'intérêt comme carburant',b:'L\'attention suit l\'intérêt, la nouveauté, l\'urgence ou le défi. Astuce : ajoute un de ces ingrédients — une course contre la montre, une musique nouvelle, un collègue à côté.'},
-{t:'Décharger la mémoire',b:'La mémoire de travail est vite saturée. Chaque chose retenue « dans la tête » vole de l\'énergie. Astuce : tout ce qui te passe par la tête va dans la Mémoire externe, tout de suite.'},
-{t:'L\'hyperfocus',b:'Quand ça accroche, tu peux plonger des heures. Puissant, mais ça mange les repas et le sommeil. Astuce : avant de plonger, pose une alarme de sortie.'},
-{t:'Le retour sans culpabilité',b:'Rater un jour ne casse rien. La culpabilité, elle, freine le retour. Astuce : quand tu reviens, fais une seule miette. Le simple retour est la victoire.'}];
-function nextLesson(){const d=S.get('lessons',[]);return LESSONS.find((l,i)=>!d.includes(i))}
-function renderLessons(){const d=S.get('lessons',[]);$('lessonView').style.display='none';$('lessonList').style.display='block';
-$('lessonList').innerHTML=LESSONS.map((l,i)=>`<div class="lesson ${d.includes(i)?'done':''}" onclick="openLesson(${i})"><b>${i+1}. ${esc(l.t)}</b></div>`).join('')}
-function openLesson(i){const l=LESSONS[i];$('lessonList').style.display='none';const v=$('lessonView');v.style.display='block';
-v.innerHTML=`<svg class="mascot bounce"><use href="#boutou"/></svg><div class="tag">Leçon ${i+1}</div><h2>${esc(l.t)}</h2><p>${esc(l.b)}</p><button class="btn" onclick="doneLesson(${i})">J'ai compris</button><button class="btn alt" onclick="renderLessons()">Retour</button>`}
-function doneLesson(i){const d=S.get('lessons',[]);if(!d.includes(i)){d.push(i);S.set('lessons',d);win('Leçon : '+LESSONS[i].t)}toast('Astuce gagnée 🧭');renderLessons()}
-
-/* Réglages */
-function saveSet(){S.set('name',$('nameIn').value.trim());toast('Enregistré');renderHome()}
-function wipe(){if(confirm('Tout effacer ?')){Object.keys(localStorage).filter(k=>k.startsWith('bt_')).forEach(k=>localStorage.removeItem(k));location.reload()}}
-
-$('nameIn').value=S.get('name','');
-renderHome();renderSteps();
-if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
-</script>
+<script src="js/mascot.js"></script>
+<script src="js/data.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
