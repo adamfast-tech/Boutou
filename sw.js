@@ -1,6 +1,7 @@
 /* Boutou — service worker : réseau d'abord pour la page, cache d'abord pour le reste. */
-var C = 'boutou-v3';
-var F = ['./', 'index.html', 'css/app.css', 'css/mascot.css', 'js/app.js', 'js/data.js', 'js/mascot.js',
+var C = 'boutou-v4';
+var F = ['./', 'index.html', 'css/app.css', 'css/mascot.css', 'css/anim.css', 'js/app.js', 'js/data.js', 'js/mascot.js', 'js/anim.js',
+  'lib/noctis.css', 'lib/noctis.js', 'lib/brio.css', 'lib/brio.js',
   'fonts/fredoka.woff2', 'fonts/atkinson-400.woff2', 'fonts/atkinson-700.woff2',
   'manifest.webmanifest', 'icon-180.png', 'icon-512.png', 'favicon.png'];
 self.addEventListener('install', function (e) { e.waitUntil(caches.open(C).then(function (c) { return c.addAll(F); })); self.skipWaiting(); });

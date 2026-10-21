@@ -21,4 +21,9 @@ En ligne : https://adamfast-tech.github.io/boutou/
 Safari › ouvrir le lien › Partager › Sur l'écran d'accueil.
 
 ## Fichiers
-`index.html`, `css/` (interface, mascotte), `js/` (app, contenu, mascotte), `fonts/` (Fredoka, Atkinson Hyperlegible, licence OFL dans `fonts/OFL.txt`), `sw.js` (hors ligne).
+`index.html`, `css/` (interface, mascotte, kit d'animations), `js/` (app, contenu, mascotte, kit d'animations), `lib/` (Noctis : boutons ; Brio : micro-interactions, version allégée sans pointeur ni lots 5-6), `fonts/` (Fredoka, Atkinson Hyperlegible, licence OFL dans `fonts/OFL.txt`), `sw.js` (hors ligne).
+
+## Micro-interactions
+- Brio : texte qui s'écrit dans la bulle, titres animés, coches tracées, champs qui grandissent, pilules, curseur à ressort, interrupteur, enveloppe « mot du jour », post-it, vibrations (iPhone compris).
+- Noctis : bouton à relief, maintenir pour supprimer, micro de dictée, étoile « tâche du moment », confettis, export et import animés, câlin.
+- Kit d'animations : compteurs, apparitions, ondulation au toucher, aurore de la respiration.

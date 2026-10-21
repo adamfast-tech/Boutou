@@ -280,5 +280,15 @@ window.BT_DATA = (function () {
     [1, 'goût dans ta bouche', 'Ou bois une gorgée d\'eau et remarque son goût.']
   ];
 
-  return { CHAPTERS: CHAPTERS, cut: cut, split: split, LINES: LINES, MOODS: MOODS, LEVELS: LEVELS, BREATHS: BREATHS, GROUND: GROUND };
+  /* Un mot de Boutou : un par jour (court, il tient dans l'enveloppe). */
+  var MOTS = [
+    "Tu fais de ton mieux.", "Une miette suffit.", "Ton rythme est le bon.", "Tu as le droit de souffler.",
+    "Je crois en toi.", "Commencer, c'est gagner.", "Bois un verre d'eau.", "Tu n'es pas en retard.",
+    "Petit pas, grand cœur.", "Revenir, c'est réussir.", "Sois doux avec toi.", "Ton cerveau est unique.",
+    "Un pas, puis un autre.", "Respire, tout va bien.", "Lentement, c'est avancer.", "Aujourd'hui compte aussi.",
+    "Fait vaut mieux que parfait.", "Tu peux le faire.", "Une pause est permise.", "Tes idées comptent.",
+    "Hier est passé, vas-y.", "Tu as déjà fait beaucoup.", "Une chose à la fois.", "Je suis content de te voir."
+  ];
+
+  return { MOTS: MOTS, CHAPTERS: CHAPTERS, cut: cut, split: split, LINES: LINES, MOODS: MOODS, LEVELS: LEVELS, BREATHS: BREATHS, GROUND: GROUND };
 })();

@@ -17,7 +17,22 @@
   var uid = function () { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); };
   var esc = function (s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
   var calm = function () { return window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches; };
-  var buzz = function (p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+  var buzz = function (p) {
+    try {
+      if (window.Brio && Brio.vibre) return Brio.vibre(typeof p === 'string' ? p : Array.isArray(p) ? 'succes' : p <= 12 ? 'selection' : p <= 20 ? 'leger' : 'moyen');
+      if (navigator.vibrate) navigator.vibrate(p);
+    } catch (e) {}
+  };
+  /* Texte animé par Brio (remplace le contenu par un span neuf, monté automatiquement). */
+  function animText(el, text, effet, pas) {
+    if (!el) return;
+    var sp = document.createElement('span'); sp.textContent = text;
+    if (effet) { sp.setAttribute('data-brio-texte', effet); sp.setAttribute('data-declencheur', 'charge'); if (pas) sp.setAttribute('data-pas', pas); }
+    el.textContent = ''; el.appendChild(sp);
+  }
+  /* Libellé d'un bouton Noctis (le texte vit dans .nx-l une fois monté). */
+  function setLabel(el, t) { if (!el) return; var l = el.querySelector('.nx-l'); if (l) l.textContent = t; else el.textContent = t; }
+  var GO = function (attrs, label) { return '<button class="go-btn" data-nx="relief" ' + (attrs || '') + '>' + label + '</button>'; };
   var plural = function (n, w) { return n + ' ' + w + (n > 1 ? 's' : ''); };
 
   /* ================= Icônes ================= */
@@ -51,6 +66,7 @@
   function hydrate(root) {
     $$('.ic[data-i]', root).forEach(function (e) { e.innerHTML = svgI(e.getAttribute('data-i')); e.setAttribute('aria-hidden', 'true'); e.removeAttribute('data-i'); });
     $$('[data-bt]', root).forEach(function (e) { B.render(e, { pose: e.getAttribute('data-bt'), level: lvl().i }); e.removeAttribute('data-bt'); });
+    if (window.Anim && root && root.querySelectorAll) Anim.init(root);
   }
 
   /* Visages de météo */
@@ -118,7 +134,7 @@
     var el = $('#toast');
     el.innerHTML = '<span>' + esc(msg) + '</span>' + (action ? '<button>' + esc(action.label) + '</button>' : '');
     if (action) el.querySelector('button').onclick = function () { el.classList.remove('on'); action.fn(); };
-    el.classList.add('on'); clearTimeout(toastT);
+    el.classList.toggle('act', !!action); el.classList.add('on'); clearTimeout(toastT);
     toastT = setTimeout(function () { el.classList.remove('on'); }, ms || (action ? 4200 : 2200));
   }
 
@@ -260,7 +276,8 @@
     return firstHome ? 'Coucou' + (name ? ' ' + name : '') + ' ! Ça va aujourd\'hui ?' : D.LINES[(new Date().getDate()) % D.LINES.length];
   }
   function bubble(text) {
-    var b = $('#bubble'); b.textContent = text; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+    var b = $('#bubble'); if (b._t === text && b.firstChild) return; b._t = text;
+    animText(b, text, 'machine', 26); b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
   }
   var petT = null;
   function petReact(pose, line) {
@@ -271,7 +288,8 @@
 
   function renderHome() {
     var name = S.get('name', ''), h = new Date().getHours();
-    $('#hello').textContent = (h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir') + (name ? ', ' + name : '');
+    var hi = (h < 5 ? 'Bonne nuit' : h < 12 ? 'Bonjour' : h < 18 ? 'Bon après-midi' : 'Bonsoir') + (name ? ', ' + name : ''), hEl = $('#hello');
+    if (hEl._t !== hi) { animText(hEl, hi, hEl._t ? null : 'monte-lettres', 32); hEl._t = hi; }
     $('#today').textContent = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
     var pet = $('#homePet'), L = lvl();
@@ -299,15 +317,24 @@
       out.innerHTML = '<p>' + esc(D.MOODS[m].msg) + '</p><button class="btn soft small" data-act="' + D.MOODS[m].act[1] + '">' + esc(D.MOODS[m].act[0]) + '</button>';
     } else out.hidden = true;
 
-    renderNow(); renderLessonCard();
+    renderNow(); renderLessonCard(); renderMot();
   }
 
+  function renderMot() {
+    var c = $('#motCard'), d = dk(); if (c._d === d) return; c._d = d;
+    var n = Math.floor(new Date(d + 'T12:00:00').getTime() / 864e5), msg = D.MOTS[n % D.MOTS.length], open = S.get('motDay', '') === d;
+    c._msg = msg;
+    c.innerHTML = '<div class="env"><div data-brio="enveloppe-origami" data-taille=".78" data-texte="' + esc(msg) + '"' + (open ? ' data-ouvert' : '') + '></div></div>' +
+      '<div><h2>Un mot de Boutou</h2><p id="motTxt">' + (open ? esc(msg) : 'Touche l\'enveloppe pour l\'ouvrir.') + '</p></div>';
+  }
+
+  var DONE_BTN = '<button data-nx="confettis" data-couleurs="#F2B33D,#5DAE6B,#F59BB2,#7FD3AE" data-nombre="32" data-a="done">Déjà fait</button>';
   function renderNow() {
     var c = $('#nowCard'), t = curTask();
     if (!t) {
       c.innerHTML = '<div class="empty"><div data-bt="think" style="--bt-size:78px"></div><div><h2 style="margin:0 0 4px">Rien en cours</h2><p>Quelle tâche te bloque ? Écris-la, Boutou la découpe.</p></div></div>' +
         '<div class="row"><label class="sr" for="quickIn">Tâche</label><input id="quickIn" placeholder="Ex : appeler la banque" enterkeyhint="go" autocomplete="off">' +
-        '<button class="btn primary icon-only" id="quickBtn" aria-label="Découper la tâche">' + ic('cut') + '</button></div>';
+        '<button class="btn primary icon-only" id="quickBtn" data-ripple aria-label="Découper la tâche">' + ic('cut') + '</button></div>';
       hydrate(c);
       var q = function () { var v = $('#quickIn').value.trim(); if (!v) { $('#quickIn').focus(); return toast('Écris d\'abord une tâche'); } createTask(v); sound.pop(); petReact('happy', 'Hop, découpée en miettes !'); renderNow(); };
       $('#quickBtn').onclick = q;
@@ -320,11 +347,12 @@
       '<button class="back" style="padding:0;color:var(--mute);font-weight:500" data-open="' + t.id + '">' + esc(t.title) + '</button>' +
       '<p class="now-step">' + esc(s.t) + '</p>' +
       '<div class="bar" aria-hidden="true"><i style="width:' + (done / t.steps.length * 100) + '%"></i></div>' +
-      '<button class="btn primary wide" style="margin-top:14px" data-a="go">Je m\'y mets <span class="dur">' + s.m + ' min</span></button>' +
-      '<div class="split-row"><button class="btn soft" data-a="split">' + ic('split') + 'Trop gros</button><button class="btn soft" data-a="done">' + ic('check') + 'Déjà fait</button></div>';
+      GO('data-a="go"', 'Je m\'y mets <span class="dur">' + s.m + ' min</span>') +
+      '<div class="split-row"><button class="btn soft" data-a="split" data-ripple>' + ic('split') + 'Trop gros</button>' + DONE_BTN + '</div>';
+    hydrate(c);
     c.querySelector('[data-a=go]').onclick = function () { openSprint({ min: s.m, ref: { task: t.id, step: s.id }, auto: true }); };
     c.querySelector('[data-a=split]').onclick = function () { splitStep(t.id, s.id); petReact('focus', 'Plus petit, plus facile.'); renderNow(); };
-    c.querySelector('[data-a=done]').onclick = function () { completeStep(t.id, s.id); renderHome(); };
+    c.querySelector('[data-a=done]').onclick = function () { setTimeout(function () { completeStep(t.id, s.id); renderHome(); }, 60); };
     c.querySelector('[data-open]').onclick = function () { openTaskId = t.id; go('cut'); };
   }
 
@@ -357,7 +385,7 @@
   }
   function taskItem(t, cur) {
     var d = t.steps.filter(function (s) { return s.done; }).length, n = t.steps.length;
-    return '<button class="task' + (t.parked ? ' parked' : '') + (t.done ? ' done' : '') + '" data-open="' + t.id + '">' + ring(n ? d / n : 0) +
+    return '<button class="task' + (t.parked ? ' parked' : '') + (t.done ? ' done' : '') + '" data-ripple data-open="' + t.id + '">' + ring(n ? d / n : 0) +
       '<span><b>' + esc(t.title) + '</b><small>' + (t.done ? 'Terminée' : t.parked ? 'Au frigo, ' + d + ' sur ' + n : d + ' étape' + (d > 1 ? 's' : '') + ' faite' + (d > 1 ? 's' : '') + ' sur ' + n) + '</small></span>' +
       (cur ? '<span class="star" title="Tâche du moment">' + ic('star') + '</span>' : '') + '</button>';
   }
@@ -370,7 +398,7 @@
     if (!ts.length) html = '<div class="card empty" style="margin-top:18px"><div data-bt="idle" style="--bt-size:78px"></div><p>Tes tâches découpées apparaîtront ici. Commence par la plus agaçante.</p></div>';
     if (live.length) html += '<h3 class="list-title">Tes tâches</h3>' + live.map(function (t) { return taskItem(t, cur && cur.id === t.id); }).join('');
     if (parked.length) html += '<h3 class="list-title">Au frigo</h3>' + parked.map(function (t) { return taskItem(t); }).join('');
-    if (done.length) html += '<details><summary class="list-title">Terminées (' + done.length + ')</summary>' + done.slice(0, 20).map(function (t) { return taskItem(t); }).join('') + '</details>';
+    if (done.length) html += '<details class="done-list" data-brio="plus-moins"><summary class="list-title">Terminées (' + done.length + ')</summary>' + done.slice(0, 20).map(function (t) { return taskItem(t); }).join('') + '</details>';
     var box = $('#taskLists'); box.innerHTML = html; hydrate(box);
     $$('[data-open]', box).forEach(function (b) { b.onclick = function () { openTaskId = b.getAttribute('data-open'); renderCut(); window.scrollTo(0, 0); }; });
   }
@@ -385,7 +413,7 @@
   function renderTaskView(id) {
     var t = findTask(id); if (!t) { openTaskId = null; return renderCut(); }
     $('#cutList').hidden = true; var v = $('#taskView'); v.hidden = false;
-    var cur = curTask(), isCur = cur && cur.id === t.id, d = t.steps.filter(function (s) { return s.done; }).length, n = t.steps.length;
+    var isCur = S.get('curId', null) === t.id, d = t.steps.filter(function (s) { return s.done; }).length, n = t.steps.length;
     var ni = -1; t.steps.some(function (s, k) { if (!s.done) { ni = k; return true; } return false; });
     var s = ni >= 0 ? t.steps[ni] : null;
     var html = '<button class="back" data-a="back">' + ic('chevl') + 'Tes tâches</button>' +
@@ -395,15 +423,15 @@
     if (s) {
       html += '<div class="focus-step"><div class="kicker"><span class="num">' + (ni + 1) + '</span><span class="chip">' + ic('timer') + s.m + ' min</span></div>' +
         '<p class="now-step">' + esc(s.t) + '</p>' +
-        '<button class="btn primary wide" style="margin-top:12px" data-a="go">Je m\'y mets <span class="dur">' + s.m + ' min</span></button>' +
-        '<div class="split-row"><button class="btn soft" data-a="split">' + ic('split') + 'Trop gros</button><button class="btn soft" data-a="done">' + ic('check') + 'Déjà fait</button></div></div>';
+        GO('data-a="go"', 'Je m\'y mets <span class="dur">' + s.m + ' min</span>') +
+        '<div class="split-row"><button class="btn soft" data-a="split" data-ripple>' + ic('split') + 'Trop gros</button>' + DONE_BTN + '</div></div>';
     } else if (n) {
       html += '<div class="focus-step" style="text-align:center"><div data-bt="cheer" style="--bt-size:120px"></div><p class="now-step">Tâche terminée !</p><p class="date">Chaque miette a compté.</p></div>';
     }
     html += '<h3 class="list-title">Toutes les miettes</h3><div class="card" style="margin-top:0"><ol class="steps">' +
       t.steps.map(function (x, k) {
         return '<li class="step' + (x.done ? ' done' : '') + '" data-s="' + x.id + '">' +
-          '<button class="chk" data-a="tick" aria-label="' + (x.done ? 'Décocher' : 'Cocher') + ' l\'étape ' + (k + 1) + '">' + ic('check') + '</button>' +
+          '<span class="chk-wrap"><input type="checkbox" data-brio="coche-trace" data-sid="' + x.id + '"' + (x.done ? ' checked' : '') + ' aria-label="Étape ' + (k + 1) + ' faite"></span>' +
           '<span class="txt" data-a="edit" aria-label="Étape ' + (k + 1) + ', modifiable">' + esc(x.t) + '</span>' +
           '<span class="side"><button class="chip" data-a="dur" aria-label="Durée ' + x.m + ' minutes, changer">' + x.m + ' min</button>' +
           '<span class="mini">' + (x.done ? '' : '<button data-a="splitk" aria-label="Couper cette étape">' + ic('split') + '</button>') +
@@ -413,23 +441,29 @@
       '<label class="sr" for="stepMin">Durée</label><select id="stepMin">' + DURS.map(function (m) { return '<option value="' + m + '"' + (m === 2 ? ' selected' : '') + '>' + m + ' min</option>'; }).join('') + '</select>' +
       '<button class="btn soft icon-only" data-a="add" aria-label="Ajouter la miette">' + ic('plus') + '</button></div></div>' +
       '<div class="task-actions">' +
-      (t.done ? '' : (isCur ? '<button class="btn ghost" disabled>' + ic('star') + 'Tâche du moment</button>' : '<button class="btn soft" data-a="cur">' + ic('star') + 'Pour maintenant</button>') +
-        '<button class="btn soft" data-a="park">' + ic('snow') + (t.parked ? 'Ressortir' : 'Au frigo') + '</button>') +
-      '<button class="btn danger full" data-a="deltask">' + ic('trash') + 'Supprimer la tâche</button></div>';
+      (t.done ? '' : '<button data-nx="favori" data-a="cur" data-texte-off="Pour maintenant" data-texte-on="Tâche du moment"' + (isCur ? ' data-actif' : '') + '>Pour maintenant</button>' +
+        '<button class="btn soft" data-a="park" data-ripple>' + ic('snow') + (t.parked ? 'Ressortir' : 'Au frigo') + '</button>') +
+      '<button data-nx="maintien" data-a="deltask" data-duree="1200" data-pendant="Continue…" data-succes="Supprimée" data-reset="0">Maintenir pour supprimer</button></div>';
     v.innerHTML = html; hydrate(v);
 
     var on = function (a, fn) { $$('[data-a=' + a + ']', v).forEach(function (b) { b.onclick = fn; }); };
     on('back', function () { openTaskId = null; renderCut(); });
     on('go', function () { openSprint({ min: s.m, ref: { task: t.id, step: s.id }, auto: true }); });
     on('split', function () { splitStep(t.id, s.id); renderTaskView(id); });
-    on('done', function () { completeStep(t.id, s.id); renderTaskView(id); });
-    on('cur', function () { S.set('curId', t.id); mutTask(t.id, function (x) { x.parked = false; }); toast('C\'est ta tâche du moment'); renderTaskView(id); });
-    on('park', function () { var p = !t.parked; mutTask(t.id, function (x) { x.parked = p; }); if (p && S.get('curId', null) === t.id) S.del('curId'); toast(p ? 'Au frigo : elle t\'attend au frais' : 'Ressortie du frigo'); renderTaskView(id); });
-    on('deltask', function () {
-      var all = tasks(), idx = all.findIndex(function (x) { return x.id === t.id; }), saved = all[idx];
-      all.splice(idx, 1); saveTasks(all); openTaskId = null; renderCut();
-      toast('Tâche supprimée', { label: 'Annuler', fn: function () { var a2 = tasks(); a2.splice(idx, 0, saved); saveTasks(a2); openTaskId = saved.id; renderCut(); } });
+    on('done', function () { setTimeout(function () { completeStep(t.id, s.id); renderTaskView(id); }, 60); });
+    var fav = $('[data-a=cur]', v);
+    if (fav) fav.addEventListener('nx:change', function (e) {
+      if (e.detail.actif) { S.set('curId', t.id); mutTask(t.id, function (x) { x.parked = false; }); toast('C\'est ta tâche du moment'); }
+      else if (S.get('curId', null) === t.id) { S.del('curId'); toast('Plus de tâche du moment'); }
+      setTimeout(function () { if (openTaskId === id) renderTaskView(id); }, 900);
     });
+    on('park', function () { var p = !t.parked; mutTask(t.id, function (x) { x.parked = p; }); if (p && S.get('curId', null) === t.id) S.del('curId'); toast(p ? 'Au frigo : elle t\'attend au frais' : 'Ressortie du frigo'); renderTaskView(id); });
+    $('[data-a=deltask]', v).addEventListener('nx:confirm', function () { setTimeout(function () {
+      var all = tasks(), idx = all.findIndex(function (x) { return x.id === t.id; }), saved = all[idx];
+      if (idx < 0) return;
+      all.splice(idx, 1); saveTasks(all); if (S.get('curId', null) === t.id) S.del('curId'); openTaskId = null; renderCut(); buzz('alerte');
+      toast('Tâche supprimée', { label: 'Annuler', fn: function () { var a2 = tasks(); a2.splice(idx, 0, saved); saveTasks(a2); openTaskId = saved.id; renderCut(); } });
+    }, 450); });
     var addStep = function () {
       var inp = $('#stepIn'), tx = inp.value.trim(); if (!tx) return inp.focus();
       var m = +$('#stepMin').value || 2;
@@ -443,11 +477,12 @@
 
     $$('.step', v).forEach(function (li) {
       var sid = li.getAttribute('data-s');
-      li.querySelector('[data-a=tick]').onclick = function () {
-        var st = t.steps.filter(function (x) { return x.id === sid; })[0];
-        if (st.done) uncompleteStep(t.id, sid); else completeStep(t.id, sid);
-        renderTaskView(id);
-      };
+      li.querySelector('input[data-sid]').addEventListener('change', function () {
+        var on = this.checked;
+        if (on) completeStep(t.id, sid); else { uncompleteStep(t.id, sid); buzz('selection'); }
+        li.classList.toggle('done', on);
+        setTimeout(function () { if (openTaskId === id && $('#layer').hidden) renderTaskView(id); }, on ? 750 : 250);
+      });
       li.querySelector('[data-a=dur]').onclick = function () {
         mutTask(t.id, function (x) { x.steps.forEach(function (st) { if (st.id === sid) st.m = DURS[(DURS.indexOf(st.m) + 1) % DURS.length] || 2; }); });
         renderTaskView(id);
@@ -476,7 +511,7 @@
     var g = 0, html = '';
     D.CHAPTERS.forEach(function (c, ci) {
       var cd = c.lessons.filter(function (l) { return done.indexOf(l.id) >= 0; }).length;
-      html += '<div class="chapter"><div class="chapter-head"><div><small>Chapitre ' + (ci + 1) + '</small><h3>' + esc(c.name) + '</h3></div><span class="count">' + cd + '/' + c.lessons.length + '</span></div><div class="path">';
+      html += '<div class="chapter" data-reveal="up"><div class="chapter-head"><div><small>Chapitre ' + (ci + 1) + '</small><h3>' + esc(c.name) + '</h3></div><span class="count">' + cd + '/' + c.lessons.length + '</span></div><div class="path">';
       c.lessons.forEach(function (l, li) {
         var isDone = done.indexOf(l.id) >= 0, isCur = g === ni, locked = !isDone && ni >= 0 && g > ni, off = OFFS[g % OFFS.length];
         html += '<div class="node-wrap ' + (off >= 0 ? 'l' : 'r') + '" style="transform:translateX(' + off * 34 + 'px)">' +
@@ -487,7 +522,7 @@
       });
       html += '</div></div>';
     });
-    var j = $('#journey'); j.innerHTML = html; hydrate(j);
+    var j = $('#journey'); j.innerHTML = html; hydrate(j); drawTrails(j);
     $$('.node', j).forEach(function (b) {
       b.onclick = function () {
         if (b.getAttribute('data-lock') === '1') { var x = all[ni]; return toast('Termine d\'abord « ' + x.l.title + ' »'); }
@@ -495,6 +530,26 @@
       };
     });
     if (ni > 0) { var cn = $('.node.cur', j); if (cn && cn.scrollIntoView) setTimeout(function () { cn.scrollIntoView({ block: 'center', behavior: calm() ? 'auto' : 'smooth' }); }, 120); }
+  }
+
+  /* Sentier entre les leçons : tracé lissé passant par le centre des pastilles. */
+  function drawTrails(root) {
+    $$('.path', root).forEach(function (path) {
+      var r = path.getBoundingClientRect(), nodes = $$('.node', path);
+      if (nodes.length < 2 || !r.width) return;
+      var pts = nodes.map(function (n) { var q = n.getBoundingClientRect(); return [q.left + q.width / 2 - r.left, q.top + q.height / 2 - r.top]; });
+      var lastDone = -1; nodes.forEach(function (n, i) { if (n.classList.contains('done') || n.classList.contains('cur')) lastDone = i; });
+      var seg = function (to) {
+        var d = 'M' + pts[0][0].toFixed(1) + ' ' + pts[0][1].toFixed(1);
+        for (var i = 1; i <= to; i++) { var a = pts[i - 1], b = pts[i], my = (a[1] + b[1]) / 2; d += 'C' + a[0].toFixed(1) + ' ' + my.toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + my.toFixed(1) + ' ' + b[0].toFixed(1) + ' ' + b[1].toFixed(1); }
+        return d;
+      };
+      var svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svgEl.setAttribute('class', 'trail'); svgEl.setAttribute('aria-hidden', 'true'); svgEl.setAttribute('data-reveal', 'clip');
+      svgEl.innerHTML = '<path class="todo" d="' + seg(pts.length - 1) + '"/>' + (lastDone > 0 ? '<path class="done" d="' + seg(lastDone) + '"/>' : '');
+      path.insertBefore(svgEl, path.firstChild);
+    });
+    if (window.Anim) Anim.init(root);
   }
 
   /* ================= Mémoire ================= */
@@ -508,11 +563,18 @@
   function addNote() {
     var v = $('#memIn').value.trim(); if (!v) { $('#memIn').focus(); return toast('Écris d\'abord quelque chose'); }
     var n = S.get('notes', []); n.unshift({ id: uid(), t: v, ts: Date.now() }); S.set('notes', n.slice(0, 1000));
-    $('#memIn').value = ''; markActive(); sound.pop(); toast('Rangé dans la mémoire'); renderMem();
+    $('#memIn').value = ''; $('#memIn').dispatchEvent(new Event('input', { bubbles: true })); markActive(); sound.pop(); buzz('leger');
+    var mb = $('#memBtn'); if (window.Noctis) { Noctis.etat(mb, 'succes'); setTimeout(function () { Noctis.etat(mb, 'repos'); }, 1300); } else toast('Rangé dans la mémoire');
+    renderMem();
   }
   function renderMem() {
     var all = S.get('notes', []), q = ($('#memSearch').value || '').trim().toLowerCase();
     $('#memSearch').hidden = all.length < 7;
+    var mp = $('#memPost'), key = all.slice(0, 3).map(function (n) { return n.id; }).join(',');
+    if (mp._k !== key) {
+      mp._k = key;
+      mp.innerHTML = all.length ? '<div data-brio="post-it" data-taille=".62" data-notes="' + esc(all.slice(0, 3).map(function (n) { var t = n.t.replace(/[|\n]+/g, ' / '); return t.length > 24 ? t.slice(0, 23) + '…' : t; }).join('|')) + '"></div>' : '';
+    }
     var list = q ? all.filter(function (n) { return n.t.toLowerCase().indexOf(q) >= 0; }) : all, box = $('#notes');
     if (!all.length) box.innerHTML = '<div class="card empty"><div data-bt="think" style="--bt-size:78px"></div><p>Rien pour l\'instant. Note ici tout ce qui encombre ta tête : idées, choses à faire, rendez-vous.</p></div>';
     else if (!list.length) box.innerHTML = '<p class="date" style="padding:8px 4px">Aucune note ne contient « ' + esc(q) + ' ».</p>';
@@ -542,15 +604,23 @@
     var L = lvl(), wins = S.get('wins', []), done = S.get('ldone', []).length, total = allLessons().length;
     $('#meSub').textContent = 'Chaque victoire fait pousser Boutou.';
     var hero = $('#meHero');
-    hero.innerHTML = '<div data-bt="happy"></div><div><b>' + L.name + '</b><p>' + (L.next ? 'Encore ' + plural(L.left, 'victoire') + ' avant « ' + L.next.name + ' »' : 'Niveau maximum. Boutou rayonne.') + '</p><span class="meter"><i style="width:' + Math.round(L.p * 100) + '%"></i></span></div>';
+    hero.innerHTML = '<div data-bt="happy" id="mePet"></div><div><b>' + L.name + '</b><p>' + (L.next ? 'Encore ' + plural(L.left, 'victoire') + ' avant « ' + L.next.name + ' »' : 'Niveau maximum. Boutou rayonne.') + '</p><span class="meter"><i style="width:' + Math.round(L.p * 100) + '%"></i></span>' +
+      '<button data-nx="soutenir" data-merci="Boutou rayonne !" id="hugBtn">Faire un câlin</button></div>';
     hydrate(hero);
-    $('#stats').innerHTML = '<div class="stat"><b>' + wins.length + '</b><span>victoires</span></div><div class="stat"><b>' + activeLast7() + '/7</b><span>jours actifs</span></div><div class="stat"><b>' + done + '/' + total + '</b><span>leçons</span></div>';
+    $('#hugBtn').addEventListener('nx:confirm', function () {
+      var pet = $('#mePet'); if (pet) { B.setPose(pet, 'cheer'); B.hop(pet); setTimeout(function () { B.setPose(pet, 'happy'); }, 1600); }
+      sound.soft(); buzz('leger'); S.set('hugs', S.get('hugs', 0) + 1);
+    });
+    var st = $('#stats');
+    st.setAttribute('data-stagger', '90');
+    st.innerHTML = '<div class="stat"><b data-count="' + wins.length + '">' + wins.length + '</b><span>victoires</span></div><div class="stat"><b><span data-count="' + activeLast7() + '">' + activeLast7() + '</span>/7</b><span>jours actifs</span></div><div class="stat"><b><span data-count="' + done + '">' + done + '</span>/' + total + '</b><span>leçons</span></div>';
+    hydrate(st);
 
     var moods = S.get('moods', {}), cols = '', max = 3, counts = [];
     for (var i = 6; i >= 0; i--) { var k = dk(addDays(new Date(), -i)); var c = wins.filter(function (w) { return w.d === k; }).length; counts.push([k, c, i]); if (c > max) max = c; }
     counts.forEach(function (x) {
       var day = new Date(x[0] + 'T12:00:00'), lab = 'DLMMJVS'.charAt(day.getDay()), m = moods[x[0]];
-      cols += '<div class="wcol' + (x[2] === 0 ? ' today' : '') + '" title="' + x[1] + ' victoire(s)"><div class="wbar"><i style="height:' + (x[1] / max * 100) + '%"></i></div>' +
+      cols += '<div class="wcol' + (x[2] === 0 ? ' today' : '') + '" title="' + x[1] + ' victoire(s)"><div class="wbar"><i style="height:' + (x[1] / max * 100) + '%;--k:' + (6 - x[2]) + '"></i></div>' +
         (m != null ? moodFace(m) : '<span class="nomood"></span>') + '<span>' + lab + '</span></div>';
     });
     $('#week').innerHTML = cols;
@@ -573,8 +643,9 @@
 
     $('#nameIn').value = S.get('name', '');
     $('#soundIn').checked = S.get('sound', true);
-    var th = S.get('theme', 'auto');
-    $$('#themeSeg button').forEach(function (b) { b.setAttribute('role', 'radio'); b.setAttribute('aria-checked', b.getAttribute('data-v') === th); });
+    var th = S.get('theme', 'auto'), seg = $('#themeSeg');
+    $$('input[name=theme]', seg).forEach(function (r) { r.checked = r.value === th; });
+    if (seg._br && seg._br.placer) seg._br.placer();
     var ios = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     var standalone = navigator.standalone || (window.matchMedia && matchMedia('(display-mode: standalone)').matches);
     var inst = $('#installCard');
@@ -634,24 +705,31 @@
     o = o || {};
     if (!o.resume) SP = { len: (o.min || 2) * 60, left: (o.min || 2) * 60, end: 0, running: false, ref: o.ref || null };
     openLayer('', function (L) {
-      var rs = refStep(), C = 2 * Math.PI * 52;
+      var rs = refStep(), C = 2 * Math.PI * 52, m0 = Math.round(SP.len / 60);
       L.innerHTML = sheet('Sprint',
         (rs ? '<p class="date" style="margin:0">' + esc(rs.t.title) + '</p><p class="sprint-for">' + esc(rs.s.t) + '</p>' : '<p class="lead">Juste commencer. Tu as le droit d\'arrêter après.</p>') +
         '<div class="ring-wrap"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="ring-bg" cx="60" cy="60" r="52"/><circle class="ring-fg" id="spRing" cx="60" cy="60" r="52" stroke-dasharray="' + C + '" stroke-dashoffset="0"/></svg>' +
         '<div class="ring-in"><div id="spPet"></div><div class="clock" id="spClock" role="timer" aria-live="off">' + fmt(spLeft()) + '</div></div></div>' +
-        '<div class="chips" id="spPresets" role="radiogroup" aria-label="Durée">' + [2, 5, 10, 25].map(function (m) { return '<button role="radio" data-m="' + m + '" aria-checked="' + (SP.len === m * 60) + '">' + m + ' min</button>'; }).join('') + '</div>' +
+        '<div class="pills" id="spPresets" data-brio="onglets-pilule" aria-label="Durée">' + [2, 5, 10, 25].map(function (m) { return '<label><input type="radio" name="spd" value="' + m + '"' + (m0 === m ? ' checked' : '') + '>' + m + ' min</label>'; }).join('') + '</div>' +
+        '<div class="sp-slider" id="spSlider" data-brio="curseur-ressort" data-unite=" min"><input type="range" min="1" max="60" step="1" value="' + m0 + '" aria-label="Durée en minutes"></div>' +
         '<div class="adjust" id="spAdj" hidden><button class="btn ghost small" data-d="-60">− 1 min</button><button class="btn ghost small" data-d="60">+ 1 min</button></div>',
-        '<button class="btn primary wide" id="spMain">Démarrer</button><button class="btn ghost wide" id="spStop" hidden>Arrêter</button>');
+        GO('id="spMain"', 'Démarrer') + '<button class="btn ghost wide" id="spStop" hidden>Arrêter</button>');
       B.render($('#spPet', L), { pose: 'focus', level: lvl().i });
       bindClose(L);
-      $$('#spPresets button', L).forEach(function (b) {
-        b.onclick = function () { var m = +b.getAttribute('data-m'); SP.len = SP.left = m * 60; S.set('spLen', m); spPaint(); sound.soft(); };
-      });
+      var range = $('#spSlider input', L), pills = $('#spPresets', L);
+      var setLen = function (m, from) {
+        if (SP.running || SP.left < SP.len) return;
+        SP.len = SP.left = m * 60; S.set('spLen', m); spPaint();
+        if (from !== 'range' && +range.value !== m) { range.value = m; range.dispatchEvent(new Event('input', { bubbles: true })); }
+        if (from !== 'pill') { $$('input', pills).forEach(function (r) { r.checked = +r.value === m; }); if (pills._br && pills._br.placer) pills._br.placer(); }
+      };
+      $$('input', pills).forEach(function (r) { r.addEventListener('change', function () { if (r.checked) { setLen(+r.value, 'pill'); sound.soft(); buzz('selection'); } }); });
+      range.addEventListener('input', function (e) { if (e.isTrusted) setLen(+range.value, 'range'); });
       $$('#spAdj button', L).forEach(function (b) {
         b.onclick = function () {
           var left = spLeft(), nl = Math.max(5, left + +b.getAttribute('data-d')), diff = nl - left;
           SP.len = Math.max(nl, SP.len + diff); if (SP.running) SP.end = Date.now() + nl * 1000; else SP.left = nl;
-          spSave(); spPaint();
+          spSave(); spPaint(); buzz('selection');
         };
       });
       $('#spMain', L).onclick = function () { if (SP.running) spPause(); else spStart(); };
@@ -678,11 +756,12 @@
     clock.textContent = fmt(left);
     document.title = SP.running ? fmt(left) + ' · Boutou' : 'Boutou';
     var started = SP.running || left < SP.len;
-    $('#spMain').textContent = SP.running ? 'Pause' : started ? 'Reprendre' : 'Démarrer';
+    var lab = SP.running ? 'Pause' : started ? 'Reprendre' : 'Démarrer', mb = $('#spMain');
+    if (mb._lab !== lab) { setLabel(mb, lab); mb._lab = lab; }
     $('#spStop').hidden = !started;
     $('#spPresets').hidden = started;
+    $('#spSlider').hidden = started;
     $('#spAdj').hidden = !started;
-    $$('#spPresets button').forEach(function (b) { b.setAttribute('aria-checked', SP.len === +b.getAttribute('data-m') * 60); });
   }
   function spStopEarly() {
     var spent = SP.len - spLeft(), m = Math.max(1, Math.round(spent / 60));
@@ -700,9 +779,9 @@
     var L = $('#layer');
     var stepOpen = rs && !rs.s.done;
     L.innerHTML = sheet('Sprint',
-      '<div data-bt="cheer" style="--bt-size:180px"></div><h2>Sprint fini !</h2><p class="lead">' + (stepOpen ? 'Cette miette est faite ?<br><b>' + esc(rs.s.t) + '</b>' : plural(mins, 'minute') + ' de concentration. Ça compte.') + '</p>',
-      stepOpen ? '<button class="btn primary wide" data-a="yes">' + ic('check') + 'Oui, je coche</button><button class="btn soft wide" data-a="more">Pas encore : 2 minutes de plus</button>'
-        : '<button class="btn primary wide" data-a="close2">Terminer</button><button class="btn soft wide" data-a="more">Encore 2 minutes</button>');
+      '<div data-bt="cheer" style="--bt-size:180px"></div><h2 data-brio-texte="rebond-lettres" data-declencheur="charge">Sprint fini !</h2><p class="lead">' + (stepOpen ? 'Cette miette est faite ?<br><b>' + esc(rs.s.t) + '</b>' : plural(mins, 'minute') + ' de concentration. Ça compte.') + '</p>',
+      stepOpen ? GO('data-a="yes"', 'Oui, je coche') + '<button class="btn soft wide" data-a="more">Pas encore : 2 minutes de plus</button>'
+        : GO('data-a="close2"', 'Terminer') + '<button class="btn soft wide" data-a="more">Encore 2 minutes</button>');
     hydrate(L); bindClose(L);
     var b;
     if ((b = $('[data-a=yes]', L))) b.onclick = function () { completeStep(ref.task, ref.step); closeLayer(); };
@@ -716,22 +795,22 @@
     var pid = o.p || S.get('breath', 'coh'), min = o.min || S.get('breathMin', 1), timers = [], running = false;
     openLayer('night', function (L) {
       var paintSetup = function () {
-        var P = D.BREATHS.filter(function (x) { return x.id === pid; })[0] || D.BREATHS[0];
-        L.innerHTML = sheet('Respirer',
-          '<div class="orb" id="orb"><div id="brPet"></div></div><p class="phase" id="phase">Prêt ?</p><p class="phase-n" id="phaseN">' + esc(P.hint) + '</p>' +
-          '<div class="chips" role="radiogroup" aria-label="Rythme">' + D.BREATHS.map(function (x) { return '<button role="radio" data-p="' + x.id + '" aria-checked="' + (x.id === pid) + '">' + x.name + '</button>'; }).join('') + '</div>' +
-          '<div class="chips" role="radiogroup" aria-label="Durée">' + [1, 3, 5].map(function (m) { return '<button role="radio" data-min="' + m + '" aria-checked="' + (m === min) + '">' + m + ' min</button>'; }).join('') + '</div>',
-          '<button class="btn primary wide" id="brGo">Commencer</button>');
+        var P = function () { return D.BREATHS.filter(function (x) { return x.id === pid; })[0] || D.BREATHS[0]; };
+        L.innerHTML = '<div class="blobs" aria-hidden="true"><span></span><span></span><span></span></div>' + sheet('Respirer',
+          '<div class="orb" id="orb"><div id="brPet"></div></div><p class="phase" id="phase">Prêt ?</p><p class="phase-n" id="phaseN">' + esc(P().hint) + '</p>' +
+          '<div class="pills" data-brio="onglets-pilule" aria-label="Rythme">' + D.BREATHS.map(function (x) { return '<label><input type="radio" name="brp" value="' + x.id + '"' + (x.id === pid ? ' checked' : '') + '>' + x.name + '</label>'; }).join('') + '</div>' +
+          '<div class="pills" data-brio="onglets-pilule" aria-label="Durée">' + [1, 3, 5].map(function (m) { return '<label><input type="radio" name="brm" value="' + m + '"' + (m === min ? ' checked' : '') + '>' + m + ' min</label>'; }).join('') + '</div>',
+          GO('id="brGo"', 'Commencer'));
         hydrate(L); bindClose(L);
         B.render($('#brPet', L), { pose: 'calm', level: lvl().i });
-        $$('[data-p]', L).forEach(function (b) { b.onclick = function () { pid = b.getAttribute('data-p'); S.set('breath', pid); sound.soft(); paintSetup(); }; });
-        $$('[data-min]', L).forEach(function (b) { b.onclick = function () { min = +b.getAttribute('data-min'); S.set('breathMin', min); paintSetup(); }; });
-        $('#brGo', L).onclick = function () { start(P); };
+        $$('input[name=brp]', L).forEach(function (r) { r.addEventListener('change', function () { if (!r.checked) return; pid = r.value; S.set('breath', pid); $('#phaseN').textContent = P().hint; sound.soft(); buzz('selection'); }); });
+        $$('input[name=brm]', L).forEach(function (r) { r.addEventListener('change', function () { if (!r.checked) return; min = +r.value; S.set('breathMin', min); buzz('selection'); }); });
+        $('#brGo', L).onclick = function () { start(P()); };
       };
       var start = function (P) {
         running = true; actx(); lockScreen();
         var endAt = Date.now() + min * 60000, orb = $('#orb'), ph = $('#phase'), pn = $('#phaseN'), k = 0;
-        $$('.chips', L).forEach(function (c) { c.remove(); });
+        $$('.pills', L).forEach(function (c) { c.remove(); });
         $('.sheet-foot', L).innerHTML = '<button class="btn ghost wide" id="brStop">Arrêter</button>';
         $('#brStop').onclick = function () { closeLayer(); };
         var next = function () {
@@ -752,7 +831,7 @@
         B.setPose($('#brPet'), 'happy');
         $('#phase').textContent = 'Bien respiré';
         $('#phaseN').textContent = 'Ton corps a reçu le message : on ralentit.';
-        $('.sheet-foot', L).innerHTML = '<button class="btn primary wide" id="brEnd">Terminer</button>';
+        $('.sheet-foot', L).innerHTML = GO('id="brEnd"', 'Terminer');
         $('#brEnd').onclick = function () { closeLayer(); };
       };
       paintSetup();
@@ -767,10 +846,10 @@
       L.innerHTML = sheet('',
         '<div data-bt="tender" style="--bt-size:150px"></div><h2>Ça déborde ?</h2><p class="lead">On ralentit ensemble. Choisis une seule chose.</p>' +
         '<div class="sos-list">' +
-        '<button class="sos-opt" data-a="breathe">' + ic('wind') + '<span><b>Respirer une minute</b><small>5 secondes pour inspirer, 5 pour expirer</small></span></button>' +
-        '<button class="sos-opt" data-a="ground">' + ic('eye') + '<span><b>Ancrage 5-4-3-2-1</b><small>Revenir dans la pièce, sens par sens</small></span></button>' +
-        '<button class="sos-opt" data-a="dump">' + ic('box') + '<span><b>Vider ma tête</b><small>Tout écrire, sans trier</small></span></button>' +
-        '<button class="sos-opt" data-a="crumb">' + ic('sprout') + '<span><b>Une seule miette</b><small>La plus petite étape possible, rien d\'autre</small></span></button>' +
+        '<button class="sos-opt" data-ripple data-a="breathe">' + ic('wind') + '<span><b>Respirer une minute</b><small>5 secondes pour inspirer, 5 pour expirer</small></span></button>' +
+        '<button class="sos-opt" data-ripple data-a="ground">' + ic('eye') + '<span><b>Ancrage 5-4-3-2-1</b><small>Revenir dans la pièce, sens par sens</small></span></button>' +
+        '<button class="sos-opt" data-ripple data-a="dump">' + ic('box') + '<span><b>Vider ma tête</b><small>Tout écrire, sans trier</small></span></button>' +
+        '<button class="sos-opt" data-ripple data-a="crumb">' + ic('sprout') + '<span><b>Une seule miette</b><small>La plus petite étape possible, rien d\'autre</small></span></button>' +
         '</div><p class="fine">Si tu te sens en danger ou que tes pensées deviennent trop sombres, appelle le 3114 (gratuit, 24 h/24) ou le 15.</p>', '');
       bindClose(L);
       $('[data-a=breathe]', L).onclick = function () { openBreathe({ p: 'coh', min: 1, auto: true }); };
@@ -785,14 +864,14 @@
       var paint = function () {
         if (k >= D.GROUND.length) {
           L.innerHTML = sheet('Ancrage', '<div data-bt="calm" style="--bt-size:170px"></div><h2>Tu es là, maintenant.</h2><p class="lead">Ton attention est revenue dans la pièce. Prends ton temps avant la suite.</p>',
-            '<button class="btn primary wide" data-a="close">Terminer</button>');
+            GO('data-a="close"', 'Terminer'));
           hydrate(L); bindClose(L); addWin('Ancrage 5-4-3-2-1', 'calm'); sound.soft(); return;
         }
         var g = D.GROUND[k];
         L.innerHTML = sheet('Ancrage',
           '<div class="big-n">' + g[0] + '</div><h2>' + g[1] + '</h2><p class="lead">' + esc(g[2]) + '</p>' +
           '<div class="dotrow" aria-hidden="true">' + D.GROUND.map(function (x, i) { return '<i class="' + (i === k ? 'on' : '') + '"></i>'; }).join('') + '</div>',
-          '<button class="btn primary wide" data-a="next">' + (k === D.GROUND.length - 1 ? 'J\'ai fini' : 'Suivant') + '</button>');
+          GO('data-a="next"', k === D.GROUND.length - 1 ? 'J\'ai fini' : 'Suivant'));
         hydrate(L); bindClose(L);
         $('[data-a=next]', L).onclick = function () { k++; buzz(15); paint(); };
       };
@@ -810,24 +889,24 @@
         var segs = '<div class="segs" aria-hidden="true">' + Array.apply(null, Array(total)).map(function (_, i) { return '<i class="' + (i <= step ? 'on' : '') + '"></i>'; }).join('') + '</div>';
         var body = '', foot = '';
         if (step < l.slides.length) {
-          body = '<div data-bt="' + poses[step % 3] + '"></div>' + (step === 0 ? '<p class="ch">Chapitre ' + (x.ci + 1) + ', ' + esc(x.c.name) + '</p><h2>' + esc(l.title) + '</h2>' : '') +
-            '<p class="lesson-text">' + esc(l.slides[step]) + '</p>';
-          foot = '<button class="btn primary wide" data-a="next">Suivant</button>' + (step ? '<button class="btn ghost wide" data-a="prev">Précédent</button>' : '');
+          body = '<div data-bt="' + poses[step % 3] + '"></div>' + (step === 0 ? '<p class="ch">Chapitre ' + (x.ci + 1) + ', ' + esc(x.c.name) + '</p><h2 data-brio-texte="monte-mots" data-declencheur="charge" data-pas="60">' + esc(l.title) + '</h2>' : '') +
+            '<p class="lesson-text" data-brio-texte="fondu-mots" data-declencheur="charge" data-pas="18" data-retard="' + (step === 0 ? 350 : 80) + '">' + esc(l.slides[step]) + '</p>';
+          foot = GO('data-a="next"', 'Suivant') + (step ? '<button class="btn ghost wide" data-a="prev">Précédent</button>' : '');
         } else if (step === l.slides.length) {
           body = '<div data-bt="think" style="--bt-size:110px"></div><h2 style="font-size:22px">' + esc(l.quiz.q) + '</h2><div class="answers">' +
             l.quiz.a.map(function (a, i) {
               var cls = answered < 0 ? '' : i === l.quiz.ok ? ' ok' : i === answered ? ' ko' : '';
-              return '<button class="answer' + cls + '" data-i="' + i + '"' + (answered >= 0 ? ' disabled' : '') + '>' + esc(a) + '</button>';
+              return '<button class="answer' + cls + '" data-ripple data-i="' + i + '"' + (answered >= 0 ? ' disabled' : '') + '>' + esc(a) + '</button>';
             }).join('') + '</div>' +
             (answered >= 0 ? '<p class="why"><b>' + (answered === l.quiz.ok ? 'Exactement. ' : 'Presque ! ') + '</b>' + esc(l.quiz.why) + '</p>' : '');
-          foot = answered >= 0 ? '<button class="btn primary wide" data-a="next">Continuer</button>' : '';
+          foot = answered >= 0 ? GO('data-a="next"', 'Continuer') : '';
         } else {
           var first = S.get('ldone', []).indexOf(l.id) < 0;
           if (first) { var d = S.get('ldone', []); d.push(l.id); S.set('ldone', d); addWin('Leçon : ' + l.title, 'lesson'); }
           confetti(70); sound.win();
-          body = '<div data-bt="cheer" style="--bt-size:160px"></div><h2>Leçon terminée !</h2><p class="lead">Une astuce de plus dans ton sac.</p>' +
+          body = '<div data-bt="cheer" style="--bt-size:160px"></div><h2 data-brio-texte="rebond-lettres" data-declencheur="charge">Leçon terminée !</h2><p class="lead">Une astuce de plus dans ton sac.</p>' +
             '<div class="try"><b>À essayer</b>' + esc(l.tryIt.text) + '</div>';
-          foot = '<button class="btn primary wide" data-a="try">' + esc(l.tryIt.label) + '</button><button class="btn ghost wide" data-a="back">Retour au voyage</button>';
+          foot = GO('data-a="try"', esc(l.tryIt.label)) + '<button class="btn ghost wide" data-a="back">Retour au voyage</button>';
         }
         L.innerHTML = '<div class="sheet"><div class="sheet-top">' + segs + '<button class="x" data-a="close" aria-label="Fermer la leçon">' + ic('x') + '</button></div>' +
           '<div class="lesson-body">' + body + '</div><div class="sheet-foot">' + foot + '</div></div>';
@@ -838,7 +917,7 @@
         if ((b = $('[data-a=try]', L))) b.onclick = function () { var g = l.tryIt.go; closeLayer(function () { act(g); }); };
         if ((b = $('[data-a=back]', L))) b.onclick = function () { closeLayer(function () { go('learn'); }); };
         $$('.answer', L).forEach(function (a) {
-          a.onclick = function () { answered = +a.getAttribute('data-i'); if (answered === l.quiz.ok) { sound.pop(); buzz(20); } else { sound.soft(); } paint(); };
+          a.onclick = function () { answered = +a.getAttribute('data-i'); if (answered === l.quiz.ok) { sound.pop(); buzz('succes'); } else { sound.soft(); buzz('erreur'); } paint(); };
         });
       };
       paint();
@@ -849,10 +928,10 @@
   function openLevelUp() {
     var L0 = lvl();
     openLayer('', function (L) {
-      L.innerHTML = sheet('', '<div data-bt="cheer" style="--bt-size:210px"></div><h2>Je grandis !</h2><p class="lead">Grâce à tes ' + L0.n + ' victoires, je suis maintenant : <b>' + L0.name + '</b>.</p>',
-        '<button class="btn primary wide" data-a="close">Trop bien</button>');
+      L.innerHTML = sheet('', '<div data-bt="cheer" style="--bt-size:210px"></div><h2 data-brio-texte="ressort-lettres" data-declencheur="charge">Je grandis !</h2><p class="lead">Grâce à tes ' + L0.n + ' victoires, je suis maintenant : <b>' + L0.name + '</b>.</p>',
+        GO('data-a="close"', 'Trop bien'));
       hydrate(L); bindClose(L);
-      setTimeout(function () { confetti(140); sound.win(); }, 250);
+      setTimeout(function () { confetti(140); sound.win(); buzz('succes'); }, 250);
     });
   }
 
@@ -864,18 +943,18 @@
       var paint = function () {
         var body, foot;
         if (k === 0) {
-          body = '<div data-bt="wave"></div><h2>Salut, moi c\'est Boutou !</h2><p class="lead">Je suis une petite graine. Chaque fois que tu avances, même d\'une miette, je pousse un peu.</p>' + dots();
-          foot = '<button class="btn primary wide" data-a="n">Enchanté</button>';
+          body = '<div data-bt="wave"></div><h2 data-brio-texte="monte-mots" data-declencheur="charge" data-pas="70">Salut, moi c\'est Boutou !</h2><p class="lead">Je suis une petite graine. Chaque fois que tu avances, même d\'une miette, je pousse un peu.</p>' + dots();
+          foot = GO('data-a="n"', 'Enchanté');
         } else if (k === 1) {
-          body = '<h2>Ce qu\'on fera ensemble</h2><div class="feat">' +
+          body = '<h2>Ce qu\'on fera ensemble</h2><div class="feat" data-stagger="90">' +
             '<div>' + ic('cut') + '<span>Découper ce qui bloque en miettes de deux minutes</span></div>' +
             '<div>' + ic('timer') + '<span>Démarrer sans attendre la motivation</span></div>' +
             '<div>' + ic('wind') + '<span>Respirer et se poser quand ça déborde</span></div>' +
             '<div>' + ic('path') + '<span>Comprendre ton cerveau, une leçon à la fois</span></div></div>' + dots();
-          foot = '<button class="btn primary wide" data-a="n">Super</button>';
+          foot = GO('data-a="n"', 'Super');
         } else {
           body = '<div data-bt="happy" style="--bt-size:150px"></div><h2>Comment je t\'appelle ?</h2><label class="sr" for="introName">Prénom</label><input id="introName" placeholder="Ton prénom" autocomplete="given-name" enterkeyhint="go" value="' + esc(S.get('name', '')) + '">' + dots();
-          foot = '<button class="btn primary wide" data-a="n">C\'est parti</button>';
+          foot = GO('data-a="n"', 'C\'est parti');
         }
         L.innerHTML = '<div class="sheet intro"><div class="sheet-top"><span></span><button class="btn ghost small" data-a="skip">Passer</button></div><div class="sheet-body">' + body + '</div><div class="sheet-foot">' + foot + '</div></div>';
         hydrate(L);
@@ -889,17 +968,20 @@
   }
 
   /* ================= Dictée ================= */
-  function dictate(btn) {
+  var REC = null;
+  function dictate(btn, on) {
     var R = window.SpeechRecognition || window.webkitSpeechRecognition, target = $('#' + btn.getAttribute('data-mic'));
-    if (!R) return toast('Dictée indisponible ici : utilise le micro du clavier');
+    var off = function () { if (btn._nx && btn._nx.regler) btn._nx.regler(false, true); };
+    if (!on) { if (REC) { try { REC.stop(); } catch (e) {} } return; }
+    if (!R) { off(); return toast('Dictée indisponible ici : utilise le micro du clavier'); }
     try {
-      var r = new R(); r.lang = 'fr-FR'; r.interimResults = false;
-      btn.classList.add('listening');
-      r.onresult = function (e) { var t = e.results[0][0].transcript; target.value += (target.value ? ' ' : '') + t; target.focus(); };
+      if (REC) { try { REC.abort(); } catch (e) {} }
+      var r = REC = new R(); r.lang = 'fr-FR'; r.interimResults = false;
+      r.onresult = function (e) { var t = e.results[0][0].transcript; target.value += (target.value ? ' ' : '') + t; target.dispatchEvent(new Event('input', { bubbles: true })); target.focus(); };
       r.onerror = function () { toast('Dictée interrompue'); };
-      r.onend = function () { btn.classList.remove('listening'); };
-      r.start(); toast('Je t\'écoute…');
-    } catch (e) { btn.classList.remove('listening'); toast('Dictée indisponible ici : utilise le micro du clavier'); }
+      r.onend = function () { off(); if (REC === r) REC = null; };
+      r.start(); toast('Je t\'écoute…'); buzz('selection');
+    } catch (e) { off(); toast('Dictée indisponible ici : utilise le micro du clavier'); }
   }
 
   /* ================= Sauvegarde ================= */
@@ -911,16 +993,25 @@
     document.body.appendChild(a); a.click(); setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
     toast('Sauvegarde exportée');
   }
-  function importData(file) {
+  function importData(file, done) {
     var fr = new FileReader();
     fr.onload = function () {
-      try {
-        var j = JSON.parse(fr.result); if (!j || j.app !== 'boutou' || typeof j.data !== 'object') throw 0;
-        if (!confirm('Remplacer les données de cet appareil par cette sauvegarde ?')) return;
-        Object.keys(localStorage).filter(function (k) { return k.indexOf('bt_') === 0; }).forEach(function (k) { localStorage.removeItem(k); });
-        Object.keys(j.data).forEach(function (k) { if (k.indexOf('bt_') === 0 && typeof j.data[k] === 'string') localStorage.setItem(k, j.data[k]); });
-        location.reload();
-      } catch (e) { toast('Ce fichier n\'est pas une sauvegarde Boutou'); }
+      var j = null;
+      try { j = JSON.parse(fr.result); if (!j || j.app !== 'boutou' || typeof j.data !== 'object') throw 0; }
+      catch (e) { if (done) done(false); return toast('Ce fichier n\'est pas une sauvegarde Boutou'); }
+      if (done) done(true);
+      openLayer('', function (L) {
+        L.innerHTML = sheet('Importer', '<div data-bt="think" style="--bt-size:150px"></div><h2>Remplacer tes données ?</h2><p class="lead">Les tâches, notes et victoires de cet appareil seront remplacées par la sauvegarde du ' + esc(new Date(j.at).toLocaleDateString('fr-FR')) + '.</p>',
+          '<button data-nx="maintien" class="go-hold" data-duree="1200" data-pendant="Continue…" data-succes="Remplacées" data-reset="0">Maintenir pour remplacer</button><button class="btn ghost wide" data-a="close">Annuler</button>');
+        bindClose(L);
+        $('[data-nx=maintien]', L).addEventListener('nx:confirm', function () {
+          setTimeout(function () {
+            Object.keys(localStorage).filter(function (k) { return k.indexOf('bt_') === 0; }).forEach(function (k) { localStorage.removeItem(k); });
+            Object.keys(j.data).forEach(function (k) { if (k.indexOf('bt_') === 0 && typeof j.data[k] === 'string') localStorage.setItem(k, j.data[k]); });
+            location.reload();
+          }, 500);
+        });
+      });
     };
     fr.readAsText(file);
   }
@@ -929,7 +1020,7 @@
   function bind() {
     $$('#tabs button').forEach(function (b) { b.onclick = function () { var t = b.getAttribute('data-t'); if (t === 'cut' && tab === 'cut') openTaskId = null; go(t); }; });
     $$('[data-go]').forEach(function (b) { b.onclick = function () { act(b.getAttribute('data-go')); }; });
-    $$('[data-mic]').forEach(function (b) { b.onclick = function () { dictate(b); }; });
+    $$('[data-mic]').forEach(function (b) { b.addEventListener('nx:change', function (e) { dictate(b, e.detail.actif); }); });
     document.addEventListener('click', function (e) { var a = e.target.closest && e.target.closest('[data-act]'); if (a) act(a.getAttribute('data-act')); });
     $('#moods').addEventListener('click', function (e) {
       var b = e.target.closest('.mood'); if (!b) return;
@@ -949,15 +1040,25 @@
     $('#memSearch').oninput = renderMem;
     $('#nameIn').onchange = function () { S.set('name', this.value.trim().slice(0, 30)); toast('Prénom enregistré'); };
     $('#soundIn').onchange = function () { S.set('sound', this.checked); if (this.checked) sound.pop(); };
-    $$('#themeSeg button').forEach(function (b) { b.onclick = function () { var v = b.getAttribute('data-v'); S.set('theme', v); applyTheme(v); renderMe(); }; });
+    $$('#themeSeg input').forEach(function (r) { r.addEventListener('change', function () { if (!r.checked) return; S.set('theme', r.value); applyTheme(r.value); buzz('selection'); }); });
     $('#introBtn').onclick = openIntro;
-    $('#exportBtn').onclick = exportData;
-    $('#importIn').onchange = function () { if (this.files[0]) importData(this.files[0]); this.value = ''; };
-    $('#wipeBtn').onclick = function () {
-      if (!confirm('Tout effacer ? Tâches, notes, victoires et progression seront supprimées de cet appareil.')) return;
-      Object.keys(localStorage).filter(function (k) { return k.indexOf('bt_') === 0; }).forEach(function (k) { localStorage.removeItem(k); });
-      location.reload();
-    };
+    $('#exportBtn').addEventListener('nx:confirm', function () {
+      var b = this; exportData();
+      [.35, .7, 1].forEach(function (p, i) { setTimeout(function () { if (window.Noctis) Noctis.progression(b, p); }, 160 * (i + 1)); });
+    });
+    $('#importBtn').addEventListener('nx:fichiers', function (e) {
+      var b = this, f = e.detail.fichiers && e.detail.fichiers[0]; if (!f) return;
+      setTimeout(function () { if (window.Noctis) Noctis.progression(b, .6); }, 120);
+      importData(f, function (ok) { if (window.Noctis) Noctis.progression(b, 1); });
+    });
+    $('#wipeBtn').addEventListener('nx:confirm', function () {
+      buzz('alerte');
+      setTimeout(function () { Object.keys(localStorage).filter(function (k) { return k.indexOf('bt_') === 0; }).forEach(function (k) { localStorage.removeItem(k); }); location.reload(); }, 700);
+    });
+    $('#motCard').addEventListener('brio:change', function (e) {
+      if (!e.detail || !e.detail.ouvert) return;
+      S.set('motDay', dk()); var t = $('#motTxt'); if (t) t.textContent = this._msg || ''; sound.soft(); buzz('leger'); petReact('happy');
+    });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('#layer').hidden) closeLayer(); });
     var lastDay = dk();
     document.addEventListener('visibilitychange', function () {

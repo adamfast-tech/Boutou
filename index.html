@@ -15,10 +15,13 @@
 <link rel="icon" type="image/png" href="favicon.png">
 <link rel="preload" href="fonts/fredoka.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="fonts/atkinson-400.woff2" as="font" type="font/woff2" crossorigin>
+<script>document.documentElement.classList.add('js');try{var t=localStorage.getItem('bt_theme');t=t&&JSON.parse(t);if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+<link rel="stylesheet" href="lib/noctis.css">
+<link rel="stylesheet" href="lib/brio.css">
+<link rel="stylesheet" href="css/anim.css">
 <link rel="stylesheet" href="css/mascot.css">
 <link rel="stylesheet" href="css/app.css">
 <title>Boutou</title>
-<script>try{var t=localStorage.getItem('bt_theme');t=t&&JSON.parse(t);if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
 </head>
 <body>
 
@@ -53,10 +56,12 @@
 
     <button class="card lesson-card" id="lessonCard"></button>
 
+    <div class="card mot-card" id="motCard"></div>
+
     <div class="tools">
-      <button class="tool" data-go="breathe"><span class="ic" data-i="wind"></span>Respirer</button>
-      <button class="tool" data-go="sprint"><span class="ic" data-i="timer"></span>Sprint</button>
-      <button class="tool sos" data-go="sos"><span class="ic" data-i="wave"></span>Ça déborde</button>
+      <button class="tool" data-go="breathe" data-ripple><span class="ic" data-i="wind"></span>Respirer</button>
+      <button class="tool" data-go="sprint" data-ripple><span class="ic" data-i="timer"></span>Sprint</button>
+      <button class="tool sos" data-go="sos" data-ripple><span class="ic" data-i="wave"></span>Ça déborde</button>
     </div>
   </section>
 
@@ -65,11 +70,13 @@
     <div id="cutList">
       <header class="top"><div><h1>Découper</h1><p class="date">Écris ce qui bloque. Boutou le coupe en miettes.</p></div></header>
       <div class="card">
-        <label class="sr" for="taskIn">Tâche à découper</label>
-        <textarea id="taskIn" rows="2" placeholder="Ex : répondre au mail du propriétaire"></textarea>
+        <div class="glow" data-brio="champ-lueur">
+          <label class="sr" for="taskIn">Tâche à découper</label>
+          <textarea id="taskIn" rows="1" data-brio="zone-auto" data-max="180" placeholder="Ex : répondre au mail du propriétaire"></textarea>
+        </div>
         <div class="row">
-          <button class="btn soft icon-only" data-mic="taskIn" aria-label="Dicter la tâche"><span class="ic" data-i="mic"></span></button>
-          <button class="btn primary grow" id="cutBtn"><span class="ic" data-i="cut"></span>Découper</button>
+          <button class="mic" data-nx="micro" data-seul data-actif="false" data-mic="taskIn" aria-label="Dicter la tâche"></button>
+          <button class="btn primary grow" id="cutBtn" data-ripple><span class="ic" data-i="cut"></span>Découper</button>
         </div>
       </div>
       <div id="taskLists"></div>
@@ -86,20 +93,22 @@
 
   <!-- MÉMOIRE -->
   <section class="view" id="v-mem" aria-label="Mémoire">
-    <header class="top"><div><h1>Mémoire</h1><p class="date">Vide ta tête ici. Boutou retient pour toi.</p></div></header>
+    <header class="top mem-top"><div><h1>Mémoire</h1><p class="date">Vide ta tête ici. Boutou retient pour toi.</p></div><div id="memPost" aria-hidden="true"></div></header>
     <div class="card">
-      <label class="sr" for="memIn">Note</label>
-      <textarea id="memIn" rows="2" placeholder="Une idée, un truc à ne pas oublier…"></textarea>
+      <div class="glow" data-brio="champ-lueur">
+        <label class="sr" for="memIn">Note</label>
+        <textarea id="memIn" rows="1" data-brio="zone-auto" data-max="220" placeholder="Une idée, un truc à ne pas oublier…"></textarea>
+      </div>
       <div class="row">
-        <button class="btn soft icon-only" data-mic="memIn" aria-label="Dicter la note"><span class="ic" data-i="mic"></span></button>
-        <button class="btn primary grow" id="memBtn"><span class="ic" data-i="box"></span>Ranger</button>
+        <button class="mic" data-nx="micro" data-seul data-actif="false" data-mic="memIn" aria-label="Dicter la note"></button>
+        <button class="btn primary grow" id="memBtn" data-nx="etat" data-succes="Rangé">Ranger</button>
       </div>
     </div>
     <input class="search" id="memSearch" type="search" placeholder="Chercher dans la mémoire" hidden>
     <div id="notes"></div>
   </section>
 
-  <!-- MOI -->
+  <!-- JARDIN -->
   <section class="view" id="v-me" aria-label="Mon jardin">
     <header class="top"><div><h1>Ton jardin</h1><p class="date" id="meSub"></p></div></header>
     <div class="me-hero card" id="meHero"></div>
@@ -111,16 +120,18 @@
       <h2>Réglages</h2>
       <label class="field"><span>Prénom</span><input id="nameIn" autocomplete="given-name" placeholder="Ton prénom"></label>
       <div class="field"><span>Thème</span>
-        <div class="seg" id="themeSeg" role="radiogroup" aria-label="Thème">
-          <button data-v="auto">Auto</button><button data-v="light">Clair</button><button data-v="dark">Sombre</button>
+        <div class="pills" id="themeSeg" data-brio="onglets-pilule" aria-label="Thème">
+          <label><input type="radio" name="theme" value="auto">Auto</label>
+          <label><input type="radio" name="theme" value="light">Clair</label>
+          <label><input type="radio" name="theme" value="dark">Sombre</label>
         </div>
       </div>
-      <label class="field switch"><span>Sons</span><input type="checkbox" id="soundIn"><i aria-hidden="true"></i></label>
+      <label class="field"><span>Sons</span><input type="checkbox" id="soundIn" data-brio="interrupteur-rebond"></label>
       <div class="set-actions">
         <button class="btn soft" id="introBtn">Revoir l'intro</button>
-        <button class="btn soft" id="exportBtn">Exporter mes données</button>
-        <label class="btn soft">Importer<input type="file" id="importIn" accept="application/json,.json" hidden></label>
-        <button class="btn danger" id="wipeBtn">Tout effacer</button>
+        <button id="exportBtn" data-nx="telecharger" data-fini="Exporté">Exporter</button>
+        <button id="importBtn" data-nx="televerser" data-accepte="application/json,.json" data-fini="Importé">Importer</button>
+        <button id="wipeBtn" class="wipe" data-nx="maintien" data-duree="2000" data-pendant="Continue à maintenir…" data-succes="Effacé" data-reset="0">Maintenir pour tout effacer</button>
       </div>
       <p class="fine">Tes données restent sur cet appareil. Boutou aide à s'organiser, il ne remplace pas un avis médical.</p>
     </div>
@@ -140,6 +151,9 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <canvas class="confetti" id="confetti" aria-hidden="true"></canvas>
 
+<script src="lib/noctis.js"></script>
+<script src="lib/brio.js"></script>
+<script src="js/anim.js"></script>
 <script src="js/mascot.js"></script>
 <script src="js/data.js"></script>
 <script src="js/app.js"></script>
