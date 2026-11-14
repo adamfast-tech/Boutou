@@ -13,7 +13,7 @@ Boutou est une petite graine duveteuse : chaque victoire la fait pousser (graine
 - **Mémoire** : notes rapides, transformables en tâches.
 - **Jardin** : niveau, semaine, victoires, réglages, export/import.
 
-Données stockées uniquement dans le navigateur (localStorage, préfixe `bt_`).
+Les données restent uniquement dans ton navigateur.
 
 En ligne : https://adamfast-tech.github.io/boutou/
 
